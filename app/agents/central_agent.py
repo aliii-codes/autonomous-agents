@@ -33,6 +33,7 @@ from pydantic import BaseModel, Field
 from core.database import get_database, get_checkpointer
 from core.settings import settings
 from agents.customer_support.agent import run_customer_support_turn
+from agents.leads.agent import run_lead_generation_turn
 
 logger = logging.getLogger(__name__)
 
@@ -164,11 +165,26 @@ async def customer_support_node(state: MasterState) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Agent node — lead_generation (placeholder for now)
+# Agent node — lead_generation (real ReAct agent, file-backed)
 # ---------------------------------------------------------------------------
 async def lead_generation_node(state: MasterState) -> Dict[str, Any]:
-    await asyncio.sleep(0)
-    reply = "[lead_generation] not yet implemented."
+    tenant = state["tenant"]
+    customer_phone = state["customer_phone"]
+    user_message = state["user_message"]
+
+    db = get_database()
+
+    try:
+        reply = await run_lead_generation_turn(
+            db=db,
+            tenant=tenant,
+            customer_phone=customer_phone,
+            user_message=user_message,
+        )
+    except Exception as e:
+        logger.exception(f"[master.lead_generation] agent failed: {e}")
+        reply = "Lead generation mein abhi masla aa gaya hai. Thori dair baad try karein."
+
     return {
         "agent_replies": {"lead_generation": reply},
         "messages": [AIMessage(content=reply)],
